@@ -1,0 +1,9 @@
+com.crowdstrike.
+com.sentinelone.
+com.sentinel-labs.
+com.eset.
+com.jamf.
+com.jamfsoftware.
+com.paloaltonetworks.
+com.cisco.anyconnect
+com.cisco.secureclient

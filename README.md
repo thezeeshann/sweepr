@@ -11,6 +11,8 @@ sweepr uninstall    remove an app with its preferences, caches and LaunchAgents
 sweepr maintain     flush DNS, refresh QuickLook/icons, compact databases
 ```
 
+<img width="1470" height="956" alt="Screenshot 2026-10-13 at 12 37 28 AM" src="https://github.com/user-attachments/assets/800e1816-bd82-420e-9bf3-93b911ee302b" />
+
 Built from an analysis of [Mole](https://github.com/tw93/Mole) by tw93, which is
 licensed **GPL-3.0-or-later**. The cleanup rules, protection lists and metric schema
 derive from it, so sweepr is distributed under the same license (see `LICENSE` and

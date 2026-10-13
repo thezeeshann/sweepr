@@ -26,9 +26,6 @@ pub struct Args {
     /// List installed apps and exit
     #[arg(long)]
     pub list: bool,
-    /// Show what would be removed without moving anything
-    #[arg(short = 'n', long)]
-    pub dry_run: bool,
     /// Do not ask for confirmation
     #[arg(short, long)]
     pub yes: bool,
@@ -49,7 +46,7 @@ impl Plan {
     }
 }
 
-pub fn run_cmd(args: Args) -> Result<()> {
+pub fn run_cmd(args: Args, dry_run: bool) -> Result<()> {
     if unsafe { libc::geteuid() } == 0 {
         bail!("run as your normal user, not root: apps in /Applications are moved to your own Trash");
     }
@@ -94,7 +91,7 @@ pub fn run_cmd(args: Args) -> Result<()> {
         .collect();
 
     println!();
-    if args.dry_run {
+    if dry_run {
         println!("{}", ui.yellow("Dry run: nothing will be moved"));
     }
     for p in &plans {
@@ -103,7 +100,7 @@ pub fn run_cmd(args: Args) -> Result<()> {
     let removable: Vec<&Plan> = plans.iter().filter(|p| p.cask.is_none()).collect();
     let total: u64 = removable.iter().map(|p| p.total()).sum();
     println!("\nTotal to move to the Trash: {}", ui.green(&human_bytes(total)));
-    if args.dry_run || removable.is_empty() {
+    if dry_run || removable.is_empty() {
         return Ok(());
     }
     if !args.yes && !confirm(removable.len())? {

@@ -21,7 +21,7 @@ pub struct Args {
     pub min_size: String,
 }
 
-pub fn run_cmd(args: Args) -> Result<()> {
+pub fn run_cmd(args: Args, dry_run: bool) -> Result<()> {
     let home = dirs::home_dir().filter(|h| h.is_absolute()).ok_or_else(|| anyhow::anyhow!("cannot determine home directory"))?;
     let min = parse_size(&args.min_size)?;
     let start = match &args.path {
@@ -41,7 +41,7 @@ pub fn run_cmd(args: Args) -> Result<()> {
     if !std::io::stdout().is_terminal() {
         bail!("the analyzer needs a terminal; use --json for scripts");
     }
-    tui::run_tui(start, home, min)
+    tui::run_tui(start, home, min, dry_run)
 }
 
 fn print_json(start: Option<PathBuf>, home: &std::path::Path) -> Result<()> {

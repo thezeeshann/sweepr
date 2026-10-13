@@ -23,9 +23,6 @@ const VACUUM_TIMEOUT: Duration = Duration::from_secs(120);
 
 #[derive(ClapArgs, Debug)]
 pub struct Args {
-    /// Show what each task would do without changing anything
-    #[arg(short = 'n', long)]
-    pub dry_run: bool,
     /// Run only these tasks: dns, quicklook, databases (repeatable)
     #[arg(long = "only", value_name = "TASK")]
     pub only: Vec<String>,
@@ -66,7 +63,7 @@ struct Ctx {
     dry_run: bool,
 }
 
-pub fn run_cmd(args: Args) -> Result<()> {
+pub fn run_cmd(args: Args, dry_run: bool) -> Result<()> {
     if args.list {
         for (name, desc, _) in TASKS {
             println!("{name:<10} {desc}");
@@ -79,10 +76,10 @@ pub fn run_cmd(args: Args) -> Result<()> {
     }
     let home = dirs::home_dir().filter(|h| h.is_absolute()).ok_or_else(|| anyhow::anyhow!("cannot determine home directory"))?;
     let ui = Ui::detect();
-    let ctx = Ctx { home, dry_run: args.dry_run };
+    let ctx = Ctx { home, dry_run };
 
     println!();
-    if args.dry_run {
+    if dry_run {
         println!("{}", ui.yellow("Dry run: nothing will be changed"));
     }
     let mut counts = [0usize; 4];
@@ -227,18 +224,26 @@ fn probe(path: &Path) -> Probe {
     }
 }
 
-/// (page_count, freelist_count, page_size)
+/// (page_count, freelist_count, page_size), read straight from the 100-byte file
+/// header so no SQLite connection is opened: a connection can create -wal/-shm
+/// files, and a preview must not touch anything.
 fn page_info(db: &Path) -> Option<(u64, u64, u64)> {
-    let out = run(
-        "/usr/bin/sqlite3",
-        &[&db.to_string_lossy(), "PRAGMA page_count; PRAGMA freelist_count; PRAGMA page_size;"],
-        SHORT,
-    );
-    if !out.ok {
-        return None;
-    }
-    let mut it = out.stdout.lines().map(|l| l.trim().parse::<u64>());
-    Some((it.next()?.ok()?, it.next()?.ok()?, it.next()?.ok()?))
+    use std::io::Read;
+    let mut hdr = [0u8; 100];
+    std::fs::File::open(db).ok()?.read_exact(&mut hdr).ok()?;
+    parse_header(&hdr, db.metadata().ok()?.len())
+}
+
+fn parse_header(hdr: &[u8; 100], file_len: u64) -> Option<(u64, u64, u64)> {
+    let be32 = |o: usize| u32::from_be_bytes([hdr[o], hdr[o + 1], hdr[o + 2], hdr[o + 3]]) as u64;
+    let page_size = match u16::from_be_bytes([hdr[16], hdr[17]]) {
+        1 => 65536,
+        n if n >= 512 && n.is_power_of_two() => n as u64,
+        _ => return None,
+    };
+    // The in-header page count is only trusted when it matches the change counter.
+    let pages = if be32(24) == be32(92) && be32(28) > 0 { be32(28) } else { file_len / page_size };
+    Some((pages, be32(36), page_size))
 }
 
 fn databases(ctx: &Ctx) -> Report {
@@ -404,8 +409,25 @@ mod tests {
     }
 
     #[test]
+    fn reads_page_counts_from_the_sqlite_header() {
+        let mut h = [0u8; 100];
+        h[16..18].copy_from_slice(&4096u16.to_be_bytes());
+        h[24..28].copy_from_slice(&7u32.to_be_bytes());
+        h[92..96].copy_from_slice(&7u32.to_be_bytes());
+        h[28..32].copy_from_slice(&1000u32.to_be_bytes());
+        h[36..40].copy_from_slice(&120u32.to_be_bytes());
+        assert_eq!(parse_header(&h, 0), Some((1000, 120, 4096)));
+        h[92..96].copy_from_slice(&8u32.to_be_bytes()); // stale count: fall back to file size
+        assert_eq!(parse_header(&h, 4096 * 900), Some((900, 120, 4096)));
+        h[16..18].copy_from_slice(&1u16.to_be_bytes());
+        assert_eq!(parse_header(&h, 65536 * 3).unwrap().2, 65536);
+        h[16..18].copy_from_slice(&1000u16.to_be_bytes());
+        assert_eq!(parse_header(&h, 0), None, "not a power of two");
+    }
+
+    #[test]
     fn unknown_task_is_rejected() {
-        let a = Args { dry_run: true, only: vec!["bogus".into()], list: false };
-        assert!(run_cmd(a).is_err());
+        let a = Args { only: vec!["bogus".into()], list: false };
+        assert!(run_cmd(a, true).is_err());
     }
 }

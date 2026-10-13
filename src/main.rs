@@ -2,6 +2,7 @@ mod analyze;
 mod clean;
 mod maintain;
 mod status;
+mod theme;
 mod uninstall;
 mod util;
 
@@ -11,6 +12,9 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "sweepr", version, about)]
 struct Cli {
+    /// Preview only: read and report, never delete, move, write or change anything
+    #[arg(short = 'n', long, global = true)]
+    dry_run: bool,
     #[command(subcommand)]
     command: Command,
 }
@@ -33,10 +37,10 @@ fn main() {
     let cli = Cli::parse();
     let result = match cli.command {
         Command::Status(a) => status::run(a),
-        Command::Clean(a) => clean::run(a),
-        Command::Analyze(a) => analyze::run_cmd(a),
-        Command::Uninstall(a) => uninstall::run_cmd(a),
-        Command::Maintain(a) => maintain::run_cmd(a),
+        Command::Clean(a) => clean::run(a, cli.dry_run),
+        Command::Analyze(a) => analyze::run_cmd(a, cli.dry_run),
+        Command::Uninstall(a) => uninstall::run_cmd(a, cli.dry_run),
+        Command::Maintain(a) => maintain::run_cmd(a, cli.dry_run),
     };
     if let Err(e) = result {
         eprintln!("sweepr: {e:#}");

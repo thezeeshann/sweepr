@@ -20,13 +20,10 @@ use anyhow::{Result, bail};
 use clap::Args as ClapArgs;
 use engine::{Engine, Item};
 use std::io::{BufRead, IsTerminal, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 #[derive(ClapArgs, Debug)]
 pub struct Args {
-    /// Preview only: scan and list what would be removed, delete nothing
-    #[arg(short = 'n', long)]
-    pub dry_run: bool,
     /// Delete without asking for confirmation
     #[arg(short, long)]
     pub yes: bool,
@@ -47,7 +44,7 @@ pub struct Args {
     pub verbose: bool,
 }
 
-pub fn run(args: Args) -> Result<()> {
+pub fn run(args: Args, dry_run: bool) -> Result<()> {
     // Under sudo $HOME may be root's: cleaning that is never what was meant.
     if unsafe { libc::geteuid() } == 0 {
         bail!("run as your normal user, not root: this cleans your own home directory");
@@ -56,7 +53,7 @@ pub fn run(args: Args) -> Result<()> {
     let ui = Ui::detect();
 
     if !args.protect.is_empty() || !args.unprotect.is_empty() || args.whitelist {
-        return manage_whitelist(&args, &home, &ui);
+        return manage_whitelist(&args, &home, &ui, dry_run);
     }
 
     let sections: Vec<_> = targets::SECTIONS
@@ -71,7 +68,7 @@ pub fn run(args: Args) -> Result<()> {
     }
 
     println!();
-    if args.dry_run {
+    if dry_run {
         println!("{}", ui.yellow("Dry run: preview only, nothing will be deleted"));
     }
     let free_before = free_space(&home);
@@ -121,13 +118,12 @@ pub fn run(args: Args) -> Result<()> {
         println!("{}", ui.gray(&format!("  {} item(s) skipped because their app is running", engine.scan.deferred)));
     }
 
-    if args.dry_run {
-        match write_preview(&home, &items, total) {
-            Ok(path) => println!("Detailed file list: {}", ui.gray(&path.display().to_string())),
-            Err(e) => println!("{}", ui.gray(&format!("could not write file list: {e}"))),
+    if dry_run {
+        if !args.verbose {
+            println!("Use {} to list every path", ui.gray("--verbose"));
         }
         println!("Use {} to protect paths from cleaning", ui.gray("sweepr clean --protect <path>"));
-        println!("{}", ui.yellow("Dry run complete: no changes made"));
+        println!("{}", ui.yellow("Dry run complete: nothing was deleted or written"));
         return Ok(());
     }
 
@@ -203,28 +199,17 @@ fn confirm(total: u64, count: usize) -> Result<bool> {
     Ok(matches!(line.trim().to_lowercase().as_str(), "y" | "yes"))
 }
 
-fn write_preview(home: &Path, items: &[Item], total: u64) -> Result<PathBuf> {
-    let dir = home.join(".config/sweepr");
-    std::fs::create_dir_all(&dir)?;
-    let file = dir.join("clean-list.txt");
-    let mut body = String::from("# sweepr cleanup preview (nothing was deleted)\n");
-    let mut last = String::new();
-    for it in items {
-        if it.section != last {
-            body.push_str(&format!("\n# {}\n", it.section));
-            last = it.section.clone();
+fn manage_whitelist(args: &Args, home: &Path, ui: &Ui, dry_run: bool) -> Result<()> {
+    if dry_run && !(args.protect.is_empty() && args.unprotect.is_empty()) {
+        for p in &args.protect {
+            println!("{} would protect {p}", ui.gray("·"));
         }
-        body.push_str(&format!("{}\t{}\t{}\n", human_bytes(it.size), it.label, it.path.display()));
+        for p in &args.unprotect {
+            println!("{} would stop protecting {p}", ui.gray("·"));
+        }
+        println!("{}", ui.yellow("Dry run: the whitelist was not changed"));
+        return Ok(());
     }
-    body.push_str(&format!("\n# Potential cleanup: {}\n# Items: {}\n", human_bytes(total), items.len()));
-    // Write-then-rename so a crash never leaves a half-written list.
-    let tmp = dir.join("clean-list.txt.tmp");
-    std::fs::write(&tmp, body)?;
-    std::fs::rename(&tmp, &file)?;
-    Ok(file)
-}
-
-fn manage_whitelist(args: &Args, home: &Path, ui: &Ui) -> Result<()> {
     for p in &args.protect {
         whitelist::add(home, p)?;
         println!("{} protected {p}", ui.green("✓"));

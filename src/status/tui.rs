@@ -7,19 +7,13 @@ use ratatui::{
     DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     layout::{Constraint, Layout},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
 use std::time::{Duration, Instant};
 
-// 256-color palette (renders in Terminal.app as well as truecolor terminals).
-const PURPLE: Color = Color::Indexed(141);
-const GREEN: Color = Color::Indexed(151);
-const YELLOW: Color = Color::Indexed(221);
-const RED: Color = Color::Indexed(203);
-const DIM: Color = Color::Indexed(244);
-const TRACK: Color = Color::Indexed(238);
+use crate::theme::{DIM, GREEN, PURPLE, RED, TRACK, YELLOW, bar_colored, heading, level, rule};
 
 #[derive(Clone, Copy, PartialEq)]
 enum Sort {
@@ -324,16 +318,6 @@ fn controls_card(s: &Snapshot, w: usize) -> Vec<Line<'static>> {
 
 const LABEL_W: usize = 10;
 
-fn heading(icon: &str, title: &str, w: usize) -> Line<'static> {
-    let head = format!("{icon} {title} ");
-    let rest = w.saturating_sub(head.chars().count());
-    Line::from(vec![Span::styled(head, Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)), Span::styled(rule(rest), Style::default().fg(TRACK))])
-}
-
-fn rule(n: usize) -> String {
-    "┈".repeat(n)
-}
-
 fn label_span(l: &str) -> Span<'static> {
     Span::raw(format!("{l:<LABEL_W$}"))
 }
@@ -343,26 +327,8 @@ fn bar_width(w: usize) -> usize {
     w.saturating_sub(LABEL_W + 26).clamp(6, 22)
 }
 
-fn level(pct: f64) -> Color {
-    if pct >= 85.0 {
-        RED
-    } else if pct >= 60.0 {
-        YELLOW
-    } else {
-        GREEN
-    }
-}
-
 fn bar(pct: f64, cells: usize) -> Vec<Span<'static>> {
     bar_colored(pct, cells, level(pct))
-}
-
-fn bar_colored(pct: f64, cells: usize, color: Color) -> Vec<Span<'static>> {
-    let filled = ((pct.clamp(0.0, 100.0) / 100.0) * cells as f64).round() as usize;
-    vec![
-        Span::styled("█".repeat(filled), Style::default().fg(color)),
-        Span::styled("░".repeat(cells.saturating_sub(filled)), Style::default().fg(TRACK)),
-    ]
 }
 
 /// label · bar · percent · optional extra text

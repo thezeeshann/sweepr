@@ -11,14 +11,33 @@ sweepr uninstall    remove an app with its preferences, caches and LaunchAgents
 sweepr maintain     flush DNS, refresh QuickLook/icons, compact databases
 ```
 
+Built from reverse-engineering research. Mole's shipped macOS binaries were studied
+with REA (reverse-engineer-anything): Mach-O structure, Go build info and the real
+`--json` output of `status` and `analyze`, plus Mole's published shell sources for the
+cleaner, uninstaller and optimizer. That research drives the metric schema, the cleanup
+rules and the safety checks. The protection lists and some cleanup logic are taken from
+[Mole](https://github.com/tw93/Mole) by tw93, which is licensed **GPL-3.0-or-later**, so
+sweepr is distributed under the same license (see `LICENSE` and `NOTICE`). If you publish
+or share it, the source must be available under the GPL too.
+
 ## Screenshots
 
-<img width="1470" height="956" alt="Screenshot 2026-10-13 at 12 37 28 AM" src="https://github.com/user-attachments/assets/800e1816-bd82-420e-9bf3-93b911ee302b" />
+<table>
+  <tr>
+    <td width="50%"><a href="docs/status.png"><img src="docs/status.png" alt="sweepr status"></a><br><b>Live dashboard</b> — <code>sweepr status</code>: Mac details, CPU with P/E cores, memory, disk and I/O, network, power, Control Center-style controls and top processes</td>
+    <td width="50%"><a href="docs/analyze.png"><img src="docs/analyze.png" alt="sweepr analyze"></a><br><b>Disk analyzer</b> — <code>sweepr analyze</code>: where the space went, as a share of the disk, with unreadable folders flagged</td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/analyze-large-files.png"><img src="docs/analyze-large-files.png" alt="sweepr analyze, large files"></a><br><b>Large files</b> — press <code>t</code> in the analyzer to list the biggest files and the folder each one is in</td>
+    <td width="50%"><a href="docs/clean.png"><img src="docs/clean.png" alt="sweepr clean --dry-run"></a><br><b>Deep clean preview</b> — <code>sweepr --dry-run clean</code>: caches, logs and leftovers with sizes; nothing is deleted or written</td>
+  </tr>
+  <tr>
+    <td width="50%"><a href="docs/uninstall.png"><img src="docs/uninstall.png" alt="sweepr uninstall --dry-run"></a><br><b>Smart uninstaller</b> — <code>sweepr --dry-run uninstall Handy</code>: the app plus its preferences, caches, logs and LaunchAgents</td>
+    <td width="50%"><a href="docs/maintain.png"><img src="docs/maintain.png" alt="sweepr maintain --dry-run"></a><br><b>System maintenance</b> — <code>sweepr --dry-run maintain</code>: DNS flush, QuickLook/icon refresh and database compaction, previewed</td>
+  </tr>
+</table>
 
-Built from an analysis of [Mole](https://github.com/tw93/Mole) by tw93, which is
-licensed **GPL-3.0-or-later**. The cleanup rules, protection lists and metric schema
-derive from it, so sweepr is distributed under the same license (see `LICENSE` and
-`NOTICE`). If you publish or share it, the source must be available under the GPL too.
+Captured from a real run on an M4 MacBook Air, in read-only mode where a command can change anything.
 
 ## Install
 
@@ -50,10 +69,27 @@ Do not run it with `sudo`: `clean` and `uninstall` refuse, because they would ac
 **Start here, in this order:**
 
 1. `sweepr status` to look around. Quit with `q`.
-2. `sweepr clean --dry-run` to preview. It deletes nothing and writes the full list to
-   `~/.config/sweepr/clean-list.txt`.
+2. `sweepr --dry-run clean` to preview. It deletes and writes nothing; add `--verbose`
+   to list every path.
 3. `sweepr clean` when you like what you saw. It shows the total and asks `[y/N]`.
 4. `sweepr analyze` to see what is using the disk.
+
+### Dry run: change nothing
+
+`--dry-run` (or `-n`) works on every command, before or after the command name:
+
+```sh
+sweepr --dry-run clean        # same as: sweepr clean --dry-run
+sweepr -n uninstall Slack
+sweepr -n maintain
+sweepr -n analyze             # browse only: Del shows what it would trash, o/p/f are off
+```
+
+A dry run only reads. It deletes, moves, writes and changes nothing: no files in your
+home folder, no whitelist edits (`--protect` just reports what it would do), no
+`sudo`, no DNS flush, no QuickLook reset, no SQLite connection (database sizes are read
+from the file header). `sweepr status` never writes either way. This was checked by
+running the commands under a macOS sandbox profile that denies all file writes.
 
 ### Full Disk Access (recommended)
 

@@ -1,6 +1,5 @@
 //! Orphaned app data: caches, logs and saved state left behind by apps that are
-//! no longer installed. Ported from Mole's `clean_orphaned_app_data`,
-//! `scan_installed_apps` and `is_bundle_orphaned`.
+//! no longer installed.
 //!
 //! The scan fails closed: if any installed app's identity cannot be read, no
 //! orphan decisions are made at all, because an incomplete app list is exactly
@@ -14,11 +13,11 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime};
 
-/// Orphan retention in days (Mole: MOLE_ORPHAN_AGE_DAYS).
+/// Orphan retention in days.
 pub const ORPHAN_AGE_DAYS: u64 = 30;
-/// Max matches examined per glob (Mole: MOLE_MAX_ORPHAN_ITERATIONS).
+/// Max matches examined per glob.
 const MAX_PER_PATTERN: usize = 100;
-/// Spotlight probe budget (Mole: MOLE_TIMEOUT_MEDIUM_PROBE_SEC).
+/// Spotlight probe budget.
 const MDFIND_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// (base dir under $HOME, label, name globs). Never add LaunchAgents/Daemons

@@ -1,6 +1,6 @@
 //! Which apps are running right now. Cleaning an app's cache while it runs can
-//! corrupt open databases or force costly rebuilds, so Mole defers those caches;
-//! this is the same idea built from process executables and their Info.plist.
+//! corrupt open databases or force costly rebuilds, so those caches are deferred;
+//! running apps are found from process executables and their Info.plist.
 
 use std::collections::{HashMap, HashSet};
 use std::path::Path;

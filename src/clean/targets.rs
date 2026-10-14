@@ -1,7 +1,6 @@
-//! What gets cleaned, grouped into Mole's section order. Every entry here comes
-//! from Mole's own cleanup modules (`lib/clean/*.sh`); entries that Mole guards
-//! behind conditions this port does not reproduce (Xcode/simulator process
-//! state, compiled-model holds, vendor-specific rules) are deliberately left out.
+//! What gets cleaned, grouped into sections. Entries that need conditions this
+//! tool does not reproduce (Xcode/simulator process state, compiled-model holds,
+//! vendor-specific rules) are deliberately left out.
 //! Everything still passes the shared safety funnel in `Engine::consider`.
 
 use super::engine::{Engine, Guard};
@@ -10,7 +9,7 @@ use std::path::{Path, PathBuf};
 
 pub type SectionFn = fn(&mut Engine);
 
-/// Section order follows Mole's `perform_cleanup`.
+/// Sections run in this order.
 pub const SECTIONS: &[(&str, SectionFn)] = &[
     ("User essentials", user_essentials),
     ("App caches", app_caches),
@@ -20,7 +19,7 @@ pub const SECTIONS: &[(&str, SectionFn)] = &[
     ("App leftovers", app_leftovers),
 ];
 
-/// Retention for Application Support clutter (Mole: MOLE_SUPPORT_CACHE_AGE_DAYS).
+/// Retention for Application Support clutter.
 const SUPPORT_AGE_DAYS: u64 = 30;
 
 fn user_essentials(e: &mut Engine) {

@@ -236,7 +236,7 @@ impl Collector {
         };
 
         let total = self.sys.total_memory();
-        // Mole counts free + inactive pages as available; sysinfo also counts
+        // Free + inactive pages count as available; sysinfo also counts
         // purgeable/file cache, which under-reports usage by several GB.
         let (available, cached) = mach_vm_memory().unwrap_or((self.sys.available_memory(), 0));
         let used = total.saturating_sub(available);
@@ -524,8 +524,8 @@ fn sysctl_string(name: &str) -> Option<String> {
 
 /// Cumulative bytes read/written across all block-storage drivers.
 ///
-/// Mole's binary links no IOKit bindings and the machine exposes these counters
-/// through the IORegistry, so we read them from `ioreg` and difference them.
+/// The machine exposes these counters through the IORegistry, so we read them
+/// from `ioreg` and difference them.
 fn read_disk_io_counters() -> Option<(u64, u64)> {
     let out = Command::new("/usr/sbin/ioreg")
         .args(["-c", "IOBlockStorageDriver", "-r", "-d", "1", "-w0"])

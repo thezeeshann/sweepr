@@ -1,7 +1,6 @@
 //! Live system monitoring: CPU, memory, disk, disk I/O, network and processes.
 //!
-//! The JSON field names mirror the schema observed from Mole's `status-go`
-//! (`--json`), so tooling written against that output keeps working.
+//! `--json` prints one snapshot; `--watch` streams one per interval.
 
 mod battery;
 mod collect;

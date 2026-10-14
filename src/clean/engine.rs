@@ -1,6 +1,6 @@
 //! Scan → review → delete engine.
 //!
-//! Every candidate passes the same funnel (Mole's `safe_clean`): path
+//! Every candidate passes the same funnel: path
 //! validation, protection, whitelist, running-owner deferral, sizing. Nothing is
 //! removed during the scan, so `--dry-run` and the real run see identical items.
 //! Deletion re-validates each path and checks it is still the same filesystem
@@ -162,7 +162,7 @@ impl Engine {
     }
 
     /// Regular files under `dir` (to `max_depth`) matching `name_glob` and not
-    /// modified for `age_days` (Mole's `safe_find_delete`).
+    /// modified for `age_days`.
     pub fn aged_files(&mut self, label: &str, dir: &Path, name_glob: &str, age_days: u64, max_depth: usize) -> u64 {
         let Ok(name) = Pattern::new(name_glob) else {
             return 0;

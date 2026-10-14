@@ -4,36 +4,27 @@ Monitor, clean, analyze and maintain your Mac from the terminal. One small Rust
 binary, no runtime dependencies.
 
 ```
-sweepr status       live dashboard: CPU, memory, disk + I/O, network, controls, processes
-sweepr clean        deep clean: caches, logs, leftovers, orphaned app data
-sweepr analyze      disk analyzer: where did the space go, find large files
-sweepr uninstall    remove an app with its preferences, caches and LaunchAgents
-sweepr maintain     flush DNS, refresh QuickLook/icons, compact databases
+sw status       live dashboard: CPU, memory, disk + I/O, network, controls, processes
+sw clean        deep clean: caches, logs, leftovers, orphaned app data
+sw analyze      disk analyzer: where did the space go, find large files
+sw uninstall    remove an app with its preferences, caches and LaunchAgents
+sw maintain     flush DNS, refresh QuickLook/icons, compact databases
 ```
-
-Built from reverse-engineering research. Mole's shipped macOS binaries were studied
-with REA (reverse-engineer-anything): Mach-O structure, Go build info and the real
-`--json` output of `status` and `analyze`, plus Mole's published shell sources for the
-cleaner, uninstaller and optimizer. That research drives the metric schema, the cleanup
-rules and the safety checks. The protection lists and some cleanup logic are taken from
-[Mole](https://github.com/tw93/Mole) by tw93, which is licensed **GPL-3.0-or-later**, so
-sweepr is distributed under the same license (see `LICENSE` and `NOTICE`). If you publish
-or share it, the source must be available under the GPL too.
 
 ## Screenshots
 
 <table>
   <tr>
-    <td width="50%"><a href="docs/status.png"><img src="docs/status.png" alt="sweepr status"></a><br><b>Live dashboard</b> — <code>sweepr status</code>: Mac details, CPU with P/E cores, memory, disk and I/O, network, power, Control Center-style controls and top processes</td>
-    <td width="50%"><a href="docs/analyze.png"><img src="docs/analyze.png" alt="sweepr analyze"></a><br><b>Disk analyzer</b> — <code>sweepr analyze</code>: where the space went, as a share of the disk, with unreadable folders flagged</td>
+    <td width="50%"><a href="docs/status.png"><img src="docs/status.png" alt="sw status"></a><br><b>Live dashboard</b> — <code>sw status</code>: Mac details, CPU with P/E cores, memory, disk and I/O, network, power, Control Center-style controls and top processes</td>
+    <td width="50%"><a href="docs/analyze.png"><img src="docs/analyze.png" alt="sw analyze"></a><br><b>Disk analyzer</b> — <code>sw analyze</code>: where the space went, as a share of the disk, with unreadable folders flagged</td>
   </tr>
   <tr>
-    <td width="50%"><a href="docs/analyze-large-files.png"><img src="docs/analyze-large-files.png" alt="sweepr analyze, large files"></a><br><b>Large files</b> — press <code>t</code> in the analyzer to list the biggest files and the folder each one is in</td>
-    <td width="50%"><a href="docs/clean.png"><img src="docs/clean.png" alt="sweepr clean --dry-run"></a><br><b>Deep clean preview</b> — <code>sweepr --dry-run clean</code>: caches, logs and leftovers with sizes; nothing is deleted or written</td>
+    <td width="50%"><a href="docs/analyze-large-files.png"><img src="docs/analyze-large-files.png" alt="sw analyze, large files"></a><br><b>Large files</b> — press <code>t</code> in the analyzer to list the biggest files and the folder each one is in</td>
+    <td width="50%"><a href="docs/clean.png"><img src="docs/clean.png" alt="sw clean --dry-run"></a><br><b>Deep clean preview</b> — <code>sw --dry-run clean</code>: caches, logs and leftovers with sizes; nothing is deleted or written</td>
   </tr>
   <tr>
-    <td width="50%"><a href="docs/uninstall.png"><img src="docs/uninstall.png" alt="sweepr uninstall --dry-run"></a><br><b>Smart uninstaller</b> — <code>sweepr --dry-run uninstall Handy</code>: the app plus its preferences, caches, logs and LaunchAgents</td>
-    <td width="50%"><a href="docs/maintain.png"><img src="docs/maintain.png" alt="sweepr maintain --dry-run"></a><br><b>System maintenance</b> — <code>sweepr --dry-run maintain</code>: DNS flush, QuickLook/icon refresh and database compaction, previewed</td>
+    <td width="50%"><a href="docs/uninstall.png"><img src="docs/uninstall.png" alt="sw uninstall --dry-run"></a><br><b>Smart uninstaller</b> — <code>sw --dry-run uninstall Handy</code>: the app plus its preferences, caches, logs and LaunchAgents</td>
+    <td width="50%"><a href="docs/maintain.png"><img src="docs/maintain.png" alt="sw maintain --dry-run"></a><br><b>System maintenance</b> — <code>sw --dry-run maintain</code>: DNS flush, QuickLook/icon refresh and database compaction, previewed</td>
   </tr>
 </table>
 
@@ -47,10 +38,10 @@ You need a Rust toolchain: `curl https://sh.rustup.rs -sSf | sh` (or `brew insta
 ```sh
 cd ~/Desktop/sweepr
 cargo install --path . --locked      # builds a release binary into ~/.cargo/bin
-sweepr --version                     # check it works
+sw --version                         # check it works
 ```
 
-If `sweepr` is "not found", add Cargo's bin folder to your `PATH`:
+If `sw` is "not found", add Cargo's bin folder to your `PATH`:
 
 ```sh
 echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
@@ -68,27 +59,27 @@ Do not run it with `sudo`: `clean` and `uninstall` refuse, because they would ac
 
 **Start here, in this order:**
 
-1. `sweepr status` to look around. Quit with `q`.
-2. `sweepr --dry-run clean` to preview. It deletes and writes nothing; add `--verbose`
+1. `sw status` to look around. Quit with `q`.
+2. `sw --dry-run clean` to preview. It deletes and writes nothing; add `--verbose`
    to list every path.
-3. `sweepr clean` when you like what you saw. It shows the total and asks `[y/N]`.
-4. `sweepr analyze` to see what is using the disk.
+3. `sw clean` when you like what you saw. It shows the total and asks `[y/N]`.
+4. `sw analyze` to see what is using the disk.
 
 ### Dry run: change nothing
 
 `--dry-run` (or `-n`) works on every command, before or after the command name:
 
 ```sh
-sweepr --dry-run clean        # same as: sweepr clean --dry-run
-sweepr -n uninstall Slack
-sweepr -n maintain
-sweepr -n analyze             # browse only: Del shows what it would trash, o/p/f are off
+sw --dry-run clean        # same as: sw clean --dry-run
+sw -n uninstall Slack
+sw -n maintain
+sw -n analyze             # browse only: Del shows what it would trash, o/p/f are off
 ```
 
 A dry run only reads. It deletes, moves, writes and changes nothing: no files in your
 home folder, no whitelist edits (`--protect` just reports what it would do), no
 `sudo`, no DNS flush, no QuickLook reset, no SQLite connection (database sizes are read
-from the file header). `sweepr status` never writes either way. This was checked by
+from the file header). `sw status` never writes either way. This was checked by
 running the commands under a macOS sandbox profile that denies all file writes.
 
 ### Full Disk Access (recommended)
@@ -100,7 +91,7 @@ enable your terminal app, then restart the terminal.
 
 ## Commands
 
-### `sweepr status`
+### `sw status`
 
 | Key | Action |
 |---|---|
@@ -113,32 +104,32 @@ network per interface, **Controls** (Wi-Fi, Bluetooth, AirDrop, Focus, display
 brightness, sound volume, now playing), top processes.
 
 ```sh
-sweepr status --json                  # one snapshot (field names match Mole's JSON)
-sweepr status --watch --interval 2s   # newline-delimited JSON stream
-sweepr status --now-playing           # also show Music/Spotify (macOS asks permission once)
+sw status --json                  # one snapshot
+sw status --watch --interval 2s   # newline-delimited JSON stream
+sw status --now-playing           # also show Music/Spotify (macOS asks permission once)
 ```
 
 Controls are read-only, and anything macOS will not reveal shows as unknown, never
 as off: the Wi-Fi network name is hidden by macOS privacy, Focus needs Full Disk
 Access, and Chrome/Safari media is not readable (Music and Spotify only).
 
-### `sweepr clean`
+### `sw clean`
 
 ```sh
-sweepr clean --dry-run                   # preview only
-sweepr clean                             # scan, confirm, delete
-sweepr clean --yes                       # no prompt (required in scripts)
-sweepr clean --only browsers --only dev  # selected sections (prefix match)
-sweepr clean --protect '~/Library/Caches/Foo*'   # whitelist a path or glob
-sweepr clean --unprotect '~/Library/Caches/Foo*'
-sweepr clean --whitelist                 # show active protections
+sw clean --dry-run                   # preview only
+sw clean                             # scan, confirm, delete
+sw clean --yes                       # no prompt (required in scripts)
+sw clean --only browsers --only dev  # selected sections (prefix match)
+sw clean --protect '~/Library/Caches/Foo*'   # whitelist a path or glob
+sw clean --unprotect '~/Library/Caches/Foo*'
+sw clean --whitelist                 # show active protections
 ```
 
 Sections: User essentials, App caches, Browsers, Developer tools, Application
 Support, App leftovers (orphaned data of apps that are gone). Caches of running
 apps are skipped.
 
-### `sweepr analyze [PATH]`
+### `sw analyze [PATH]`
 
 No path opens an overview of your Mac; a path opens that folder.
 
@@ -157,21 +148,21 @@ No path opens an overview of your Mac; a path opens that folder.
 | `q` | quit |
 
 ```sh
-sweepr analyze ~/Developer --min-size 500MB
-sweepr analyze --json ~/Library          # sizes as JSON
+sw analyze ~/Developer --min-size 500MB
+sw analyze --json ~/Library          # sizes as JSON
 ```
 
 Deleting only ever moves items to the Trash, only inside your home folder, and never
 a system folder (Desktop, Documents, Library, ...) itself. Empty the Trash to
 reclaim the space.
 
-### `sweepr uninstall [APP...]`
+### `sw uninstall [APP...]`
 
 ```sh
-sweepr uninstall                 # pick from a searchable list (space select, / search)
-sweepr uninstall --list          # installed apps with sizes
-sweepr uninstall Slack --dry-run # show exactly what would be removed
-sweepr uninstall Slack           # remove it (asks first)
+sw uninstall                 # pick from a searchable list (space select, / search)
+sw uninstall --list          # installed apps with sizes
+sw uninstall Slack --dry-run # show exactly what would be removed
+sw uninstall Slack           # remove it (asks first)
 ```
 
 Finds the app's preferences, caches, containers, group containers, extension data,
@@ -180,40 +171,23 @@ its launch agents, and moves everything to the Trash. Running apps are refused,
 Homebrew Cask apps are pointed to `brew uninstall --cask --zap`, and files that need
 administrator rights are listed but not touched.
 
-### `sweepr maintain`
+### `sw maintain`
 
 ```sh
-sweepr maintain --list
-sweepr maintain --dry-run
-sweepr maintain --only quicklook      # dns | quicklook | databases
+sw maintain --list
+sw maintain --dry-run
+sw maintain --only quicklook      # dns | quicklook | databases
 ```
 
 DNS flush needs your password (run it in a terminal). Database compaction needs
 Safari/Messages closed and Full Disk Access; it checks integrity first and skips
 anything over 100 MB.
 
-## Where it differs from Mole
-
-- **Asks before deleting.** Mole deletes immediately; `clean` and `uninstall` ask first.
-- **Home folder only.** No sudo cleaning of system locations.
-- **Trash for uninstall and analyze.** Recoverable, unlike permanent deletion.
-- **Stricter symlink guard.** Any symlink among a target's ancestors below `$HOME`
-  is refused.
-- **Running browsers** are skipped entirely while open.
-- **Smaller catalog.** About 190 curated clean targets plus the generic cache sweep and
-  orphan detection. Mole's CLI-driven cleaners (pnpm, pip, Go, Docker, Xcode, ...),
-  Cloud & Office, health score, thermal/battery/GPU panels, project-artifact purge and
-  installer cleanup are not ported.
-- **Uninstaller** does not derive `~/.config/<name>`-style folders from an app's
-  display name (Mole does, with extra guards), and does not remove login items.
-- **Maintenance** covers DNS, QuickLook/icons and databases only; Mole's other
-  tasks (LaunchServices rebuild, network stack, Spotlight rebuild, ...) are not ported.
-
 ## Safety model
 
 Every deletion candidate passes the same gate: absolute path, no `..`, no control
-characters, critical-path denylist, protected app/bundle lists (extracted from Mole's
-data files), whitelist, running-owner deferral, then sizing. Removal re-validates and
+characters, critical-path denylist, protected app/bundle lists, whitelist,
+running-owner deferral, then sizing. Removal re-validates and
 requires the same device/inode that was scanned. Symlinks are unlinked, never
 followed. Orphan detection fails closed if any installed app's identity cannot be
 read. Unreadable data is reported, never counted as empty.
@@ -226,3 +200,7 @@ Config lives in `~/.config/sweepr/`.
 cargo test          # 100+ tests, including temp-home end-to-end runs
 cargo clippy --all-targets
 ```
+
+## License
+
+GPL-3.0-or-later. See `LICENSE`.

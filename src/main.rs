@@ -10,7 +10,7 @@ use clap::{Parser, Subcommand};
 
 /// Live system monitoring and deep cleaning for macOS.
 #[derive(Parser)]
-#[command(name = "sweepr", version, about)]
+#[command(name = "sw", version, about)]
 struct Cli {
     /// Preview only: read and report, never delete, move, write or change anything
     #[arg(short = 'n', long, global = true)]
@@ -43,7 +43,7 @@ fn main() {
         Command::Maintain(a) => maintain::run_cmd(a, cli.dry_run),
     };
     if let Err(e) = result {
-        eprintln!("sweepr: {e:#}");
+        eprintln!("sw: {e:#}");
         std::process::exit(1);
     }
 }

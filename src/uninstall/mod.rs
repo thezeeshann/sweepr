@@ -146,7 +146,7 @@ fn resolve(apps: &[App], q: &str) -> Result<usize> {
         [] => {
             let near: Vec<&str> = apps.iter().filter(|a| a.name.to_lowercase().contains(&ql)).map(|a| a.name.as_str()).take(5).collect();
             if near.is_empty() {
-                bail!("no installed app matches {q:?} (see `sweepr uninstall --list`)")
+                bail!("no installed app matches {q:?} (see `sw uninstall --list`)")
             } else {
                 bail!("no installed app is named {q:?}; did you mean: {}", near.join(", "))
             }

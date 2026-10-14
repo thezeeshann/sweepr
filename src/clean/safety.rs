@@ -1,16 +1,15 @@
 //! Deletion safety: the gate every candidate path passes before it is sized or
-//! removed. Ported from Mole's `validate_path_for_deletion`,
-//! `_mole_is_critical_deletion_path` and `should_protect_path`.
+//! removed.
 //!
-//! One deliberate difference: this port only cleans user-level locations, so
-//! every target must additionally resolve to a path inside `$HOME`.
+//! Only user-level locations are cleaned, so every target must resolve to a
+//! path inside `$HOME`.
 
 use glob::Pattern;
 use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-// Pattern lists extracted verbatim from Mole's app_protection(_data).sh.
+// Pattern lists, kept as data files next to this module.
 const PROTECTED_NAMES: &str = include_str!("protected_names.txt");
 const DATA_PROTECTED: &str = include_str!("data_protected.txt");
 const SYSTEM_CRITICAL: &str = include_str!("system_critical.txt");
@@ -42,14 +41,13 @@ pub fn is_system_critical_bundle(id: &str) -> bool {
     system_critical().iter().any(|p| p.matches(id))
 }
 
-/// Bundle-id / filename protection (`should_protect_data`): system components,
+/// Bundle-id / filename protection: system components,
 /// password managers, IDEs, VPN/proxy tools and so on.
 pub fn should_protect_data(name: &str) -> bool {
     names().iter().any(|p| p.matches(name)) || data_protected().iter().any(|p| p.matches(name))
 }
 
-/// Path globs from `should_protect_path` steps 1, 2, 4 and 5. Bash `case`
-/// patterns, where `*` also matches `/`, which is `glob`'s default too.
+/// Path-glob protections. `*` also matches `/`, which is `glob`'s default too.
 const PROTECTED_PATH_GLOBS: &[&str] = &[
     // system UI components
     "*[Ss]ystem[Ss]ettings*",
@@ -79,7 +77,7 @@ const PROTECTED_PATH_GLOBS: &[&str] = &[
     "*/ByHost/com.apple.bluetooth.*",
     "*/ByHost/com.apple.wifi.*",
     "*/Library/Preferences/com.apple.networkextension*.plist",
-    // Mole's own logs and AI-assistant state that lives in cache-shaped paths
+    // Other tools' logs and AI-assistant state that live in cache-shaped paths
     "*/Library/Logs/mole",
     "*/Library/Logs/mole/*",
     "*/Library/Application Support/Codex",
@@ -175,7 +173,7 @@ pub enum Mode {
     Uninstall,
 }
 
-/// `should_protect_path` for routine cleaning.
+/// Protection check for routine cleaning.
 pub fn should_protect_path(path: &str) -> bool {
     should_protect_path_in(path, Mode::Cleanup)
 }
@@ -257,8 +255,7 @@ fn under(p: &str, root: &str) -> bool {
     p == root || p.strip_prefix(root).is_some_and(|r| r.starts_with('/'))
 }
 
-/// Mole's `_mole_is_critical_deletion_path`: system roots that must never be
-/// removed, whatever the caller thinks it is deleting.
+/// System roots that must never be removed, whatever the caller thinks it is deleting.
 pub fn is_critical_path(p: &str) -> bool {
     // User-installed software lives here; individual entries stay deletable but
     // the roots themselves are critical (fall through below).
@@ -316,7 +313,7 @@ fn within_existing(path: &Path, root: &Path) -> bool {
     p.starts_with(r)
 }
 
-/// Port of `validate_path_for_deletion` for a user-level cleaner. `Ok(())` means
+/// The deletion gate for a user-level cleaner. `Ok(())` means
 /// the path may be sized and deleted; `Err` carries the reason it was refused.
 pub fn validate_for_deletion(path: &str, home: &Path) -> Result<(), String> {
     validate_in(path, home, Mode::Cleanup)
@@ -369,8 +366,8 @@ pub fn validate_in(path: &str, home: &Path, mode: Mode) -> Result<(), String> {
         }
     }
 
-    // Stricter than Mole: its guard only re-runs the deny predicates on the
-    // resolved path, so ~/Library/Caches symlinked to ~/Documents resolves to a
+    // A guard that only re-runs the deny predicates on the resolved path is not
+    // enough: ~/Library/Caches symlinked to ~/Documents resolves to a
     // location that is neither critical nor protected and the sweep would walk
     // in. Refuse any symlink among the ancestors below $HOME instead.
     let rel = pol_path
@@ -393,7 +390,7 @@ pub fn validate_in(path: &str, home: &Path, mode: Mode) -> Result<(), String> {
         return Err(format!("protected path: {policy}"));
     }
 
-    // This port only cleans inside the user's home: the literal AND the resolved
+    // Only the user's home is ever cleaned: the literal AND the resolved
     // location must both be strictly below it, and never the home itself.
     let inside = |p: &Path, h: &Path| p.starts_with(h) && p != h;
     if !(inside(Path::new(&policy), Path::new(home_s.as_ref())) || inside(Path::new(&policy), &home_canon)) {

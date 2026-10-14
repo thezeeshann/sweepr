@@ -1,9 +1,7 @@
-//! User-protected paths. Mirrors Mole's `DEFAULT_WHITELIST_PATTERNS`,
-//! `SAFETY_WHITELIST_PATTERNS` and `is_path_whitelisted` semantics.
+//! User-protected paths: built-in defaults plus the user's own list.
 //!
 //! The user's own list lives in `~/.config/sweepr/whitelist` (one path or glob
-//! per line, `~` allowed), kept separate from Mole's file so the two tools never
-//! overwrite each other's settings.
+//! per line, `~` allowed).
 
 use super::safety::normalize;
 use anyhow::{Context, Result, bail};
@@ -115,7 +113,7 @@ impl Whitelist {
         self.entries.iter().map(|e| e.pattern.as_str())
     }
 
-    /// Port of `is_path_whitelisted`.
+    /// Is `path` covered by the always-on or user-supplied patterns?
     pub fn is_protected(&self, target: &str) -> bool {
         if target.is_empty() {
             return false;

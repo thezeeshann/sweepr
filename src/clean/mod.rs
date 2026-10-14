@@ -122,7 +122,7 @@ pub fn run(args: Args, dry_run: bool) -> Result<()> {
         if !args.verbose {
             println!("Use {} to list every path", ui.gray("--verbose"));
         }
-        println!("Use {} to protect paths from cleaning", ui.gray("sweepr clean --protect <path>"));
+        println!("Use {} to protect paths from cleaning", ui.gray("sw clean --protect <path>"));
         println!("{}", ui.yellow("Dry run complete: nothing was deleted or written"));
         return Ok(());
     }

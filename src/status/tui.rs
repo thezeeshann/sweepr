@@ -13,7 +13,7 @@ use ratatui::{
 };
 use std::time::{Duration, Instant};
 
-use crate::theme::{DIM, GREEN, PURPLE, RED, TRACK, YELLOW, bar_colored, heading, level, rule};
+use crate::theme::{accent, backdrop, bad, bar_colored, good, heading, level, muted, rule, track, warn};
 
 #[derive(Clone, Copy, PartialEq)]
 enum Sort {
@@ -76,6 +76,7 @@ fn event_loop(terminal: &mut DefaultTerminal, app: &mut App, collector: &mut Col
 // ------------------------------------------------------------------ layout
 
 fn draw(f: &mut Frame, app: &App) {
+    backdrop(f);
     let [header, body, footer] = Layout::vertical([Constraint::Length(3), Constraint::Min(0), Constraint::Length(1)]).areas(f.area());
     let [left, right] = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)]).spacing(4).areas(body);
     let (lw, rw) = (left.width as usize, right.width as usize);
@@ -109,7 +110,7 @@ fn draw(f: &mut Frame, app: &App) {
     f.render_widget(
         Paragraph::new(Line::from(Span::styled(
             format!("q quit · c/m sort · space pause{}", if app.paused { "   · PAUSED" } else { "" }),
-            Style::default().fg(DIM),
+            Style::default().fg(muted()),
         ))),
         footer,
     );
@@ -124,8 +125,8 @@ fn header_lines(s: &Snapshot) -> Vec<Line<'static>> {
         format!("{} cores", s.cpu.logical_cpu)
     };
     let model = if h.model_id.is_empty() || h.model_id == h.model { h.model.clone() } else { format!("{} ({})", h.model, h.model_id) };
-    let sep = || Span::styled(" · ", Style::default().fg(DIM));
-    let mut first = vec![Span::styled("sweepr", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)), Span::raw("  ")];
+    let sep = || Span::styled(" · ", Style::default().fg(muted()));
+    let mut first = vec![Span::styled("sweepr", Style::default().fg(accent()).add_modifier(Modifier::BOLD)), Span::raw("  ")];
     let facts = [model, h.cpu_model.clone(), cores, format!("{} RAM", h.total_ram), format!("{} disk", h.disk_size)];
     for (i, f) in facts.into_iter().filter(|f| !f.trim().is_empty() && !f.starts_with(' ')).enumerate() {
         if i > 0 {
@@ -135,7 +136,7 @@ fn header_lines(s: &Snapshot) -> Vec<Line<'static>> {
     }
     let os = if h.os_build.is_empty() { h.os_version.clone() } else { format!("{} ({})", h.os_version, h.os_build) };
     let second = format!("{} · {} · up {} · {} processes", s.host, os, uptime(s.uptime_seconds), s.procs);
-    vec![Line::from(first), Line::from(Span::styled(second, Style::default().fg(DIM))), Line::raw("")]
+    vec![Line::from(first), Line::from(Span::styled(second, Style::default().fg(muted()))), Line::raw("")]
 }
 
 // ------------------------------------------------------------------ cards
@@ -191,9 +192,9 @@ fn disk_card(s: &Snapshot, w: usize) -> Vec<Line<'static>> {
     }
     v.push(Line::from(vec![
         label_span("I/O"),
-        Span::styled(io_cells(s.disk_io.read_rate), Style::default().fg(GREEN)),
+        Span::styled(io_cells(s.disk_io.read_rate), Style::default().fg(good())),
         Span::raw(format!(" R {} · ", rate(s.disk_io.read_rate))),
-        Span::styled(io_cells(s.disk_io.write_rate), Style::default().fg(YELLOW)),
+        Span::styled(io_cells(s.disk_io.write_rate), Style::default().fg(warn())),
         Span::raw(format!(" W {}", rate(s.disk_io.write_rate))),
     ]));
     v
@@ -206,8 +207,8 @@ fn network_card(s: &Snapshot, w: usize) -> Vec<Line<'static>> {
     let iface = s.network.first().map(|i| format!("{} · {}", i.name, if i.ip.is_empty() { "no address".to_string() } else { i.ip.clone() }));
     vec![
         heading("⇅", "Network", w),
-        Line::from(vec![label_span("Down"), Span::styled(sparkline(&h.rx_history, sw), Style::default().fg(GREEN)), Span::raw(format!("  {}", rate(rx)))]),
-        Line::from(vec![label_span("Up"), Span::styled(sparkline(&h.tx_history, sw), Style::default().fg(YELLOW)), Span::raw(format!("  {}", rate(tx)))]),
+        Line::from(vec![label_span("Down"), Span::styled(sparkline(&h.rx_history, sw), Style::default().fg(good())), Span::raw(format!("  {}", rate(rx)))]),
+        Line::from(vec![label_span("Up"), Span::styled(sparkline(&h.tx_history, sw), Style::default().fg(warn())), Span::raw(format!("  {}", rate(tx)))]),
         text_row("Link", iface.unwrap_or_else(|| "no interface".into())),
     ]
 }
@@ -216,9 +217,9 @@ fn process_card(s: &Snapshot, w: usize, rows: usize, sort: Sort) -> Vec<Line<'st
     let bw = bar_width(w).min(20);
     let by = if sort == Sort::Cpu { "CPU" } else { "memory" };
     let mut v = vec![Line::from(vec![
-        Span::styled("❋ Processes ", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)),
-        Span::styled(format!("by {by} "), Style::default().fg(DIM)),
-        Span::styled(rule(w.saturating_sub(14 + by.len())), Style::default().fg(TRACK)),
+        Span::styled("❋ Processes ", Style::default().fg(accent()).add_modifier(Modifier::BOLD)),
+        Span::styled(format!("by {by} "), Style::default().fg(muted())),
+        Span::styled(rule(w.saturating_sub(14 + by.len())), Style::default().fg(track())),
     ])];
     for (i, p) in s.top_processes.iter().take(rows.saturating_sub(1)).enumerate() {
         let mut spans = vec![label_span(&format!("#{}", i + 1))];
@@ -233,7 +234,7 @@ fn process_card(s: &Snapshot, w: usize, rows: usize, sort: Sort) -> Vec<Line<'st
 
 fn power_card(b: &super::battery::Battery, w: usize) -> Vec<Line<'static>> {
     let bw = bar_width(w);
-    let level_color = |p: f64| if p < 20.0 { RED } else if p < 50.0 { YELLOW } else { GREEN };
+    let level_color = |p: f64| if p < 20.0 { bad() } else if p < 50.0 { warn() } else { good() };
     let mut level = vec![label_span("Level")];
     level.extend(bar_colored(b.percent as f64, bw, level_color(b.percent as f64)));
     level.push(Span::raw(format!(" {:>5.1}%", b.percent as f64)));
@@ -253,7 +254,7 @@ fn power_card(b: &super::battery::Battery, w: usize) -> Vec<Line<'static>> {
     if let Some(c) = b.cycle_count {
         status.push_str(&format!(" · {c} cycles"));
     }
-    v.push(Line::from(Span::styled(status, Style::default().fg(DIM))));
+    v.push(Line::from(Span::styled(status, Style::default().fg(muted()))));
     v
 }
 
@@ -346,8 +347,8 @@ trait Calm {
 impl Calm for Line<'static> {
     fn with_calm(mut self) -> Self {
         for sp in self.spans.iter_mut() {
-            if sp.style.fg == Some(RED) || sp.style.fg == Some(YELLOW) {
-                sp.style = sp.style.fg(GREEN);
+            if sp.style.fg == Some(bad()) || sp.style.fg == Some(warn()) {
+                sp.style = sp.style.fg(good());
             }
         }
         self
@@ -361,11 +362,11 @@ fn text_row(label: &str, text: String) -> Line<'static> {
 /// On/off marker followed by text; an unknown state is shown with no marker at all.
 fn state_row(label: &str, on: Option<bool>, text: String) -> Line<'static> {
     let (glyph, color) = match on {
-        Some(true) => ("● ", GREEN),
-        Some(false) => ("○ ", DIM),
-        None => ("  ", DIM),
+        Some(true) => ("● ", good()),
+        Some(false) => ("○ ", muted()),
+        None => ("  ", muted()),
     };
-    let text_style = if on.is_none() { Style::default().fg(DIM) } else { Style::default() };
+    let text_style = if on.is_none() { Style::default().fg(muted()) } else { Style::default() };
     Line::from(vec![label_span(label), Span::styled(glyph, Style::default().fg(color)), Span::styled(text, text_style)])
 }
 
@@ -580,6 +581,6 @@ mod tests {
     fn free_memory_is_never_coloured_as_a_warning() {
         // 95% free is good news; the generic bar colouring would paint it red.
         let line = meter_row("Free", 95.0, 10, String::new()).with_calm();
-        assert!(line.spans.iter().all(|s| s.style.fg != Some(RED)));
+        assert!(line.spans.iter().all(|s| s.style.fg != Some(bad())));
     }
 }

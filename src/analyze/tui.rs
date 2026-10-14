@@ -7,7 +7,7 @@
 use super::scan::{self, DirSize, Entry, LargeFiles, SizeMsg};
 use crate::clean::safety::{Mode, validate_in};
 use crate::status::human_bytes;
-use crate::theme::{DIM, GREEN, PURPLE, RED, TRACK, YELLOW, bar_colored, heading};
+use crate::theme::{accent, backdrop, bad, bar_colored, cursor_bg, fill, good, heading, muted, track, warn};
 use crate::util::{move_to_trash, run};
 use anyhow::Result;
 use ratatui::{
@@ -568,18 +568,18 @@ impl App {
 fn level(bytes: u64) -> Color {
     const GB: u64 = 1 << 30;
     if bytes >= 5 * GB {
-        RED
+        bad()
     } else if bytes >= GB {
-        YELLOW
+        warn()
     } else {
-        GREEN
+        good()
     }
 }
 
 const BAR_CELLS: usize = 16;
-const CURSOR_BG: Color = Color::Indexed(236);
 
 pub fn draw(f: &mut Frame, app: &App) {
+    backdrop(f);
     let [head, list, foot] = Layout::vertical([Constraint::Length(3), Constraint::Min(3), Constraint::Length(2)]).areas(f.area());
     let w = f.area().width as usize;
 
@@ -590,12 +590,12 @@ pub fn draw(f: &mut Frame, app: &App) {
         Sort::Modified => "modified",
     };
     let sel = if app.selected.is_empty() { String::new() } else { format!(" · {} selected", app.selected.len()) };
-    let dim = Style::default().fg(DIM);
+    let dim = Style::default().fg(muted());
 
     // Line 1: product + mode, like the status dashboard. Line 2: the numbers.
-    let mut top = vec![Span::styled("sweepr", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)), Span::styled("  analyze", Style::default().add_modifier(Modifier::BOLD))];
+    let mut top = vec![Span::styled("sweepr", Style::default().fg(accent()).add_modifier(Modifier::BOLD)), Span::styled("  analyze", Style::default().add_modifier(Modifier::BOLD))];
     if app.dry_run {
-        top.push(Span::styled("  DRY RUN · nothing will be changed", Style::default().fg(YELLOW)));
+        top.push(Span::styled("  DRY RUN · nothing will be changed", Style::default().fg(warn())));
     }
     let mut info: Vec<Span> = match (app.loc(), app.disk) {
         (Loc::Overview, Some((cap, free))) => {
@@ -614,7 +614,7 @@ pub fn draw(f: &mut Frame, app: &App) {
     };
     info.push(Span::styled(format!(" · sort: {sort}{sel}{scanning}"), dim));
     if app.filtering || !app.filter.is_empty() {
-        info.push(Span::styled(format!("  /{}{}", app.filter, if app.filtering { "▏" } else { "" }), Style::default().fg(YELLOW)));
+        info.push(Span::styled(format!("  /{}{}", app.filter, if app.filtering { "▏" } else { "" }), Style::default().fg(warn())));
     }
     f.render_widget(Paragraph::new(vec![Line::from(top), Line::from(info)]), head);
 
@@ -643,11 +643,11 @@ pub fn draw(f: &mut Frame, app: &App) {
             let e = &app.entries[i];
             let here = row == app.cursor;
             let mark = if app.selected.contains(&e.path) {
-                Span::styled("● ", Style::default().fg(GREEN))
+                Span::styled("● ", Style::default().fg(good()))
             } else {
                 Span::styled("○ ", dim)
             };
-            let mut spans = vec![Span::styled(if here { "▸ " } else { "  " }, Style::default().fg(PURPLE).add_modifier(Modifier::BOLD)), mark];
+            let mut spans = vec![Span::styled(if here { "▸ " } else { "  " }, Style::default().fg(accent()).add_modifier(Modifier::BOLD)), mark];
             match e.size {
                 Some(s) => {
                     spans.extend(bar_colored(s as f64 / max as f64 * 100.0, BAR_CELLS, level(s)));
@@ -656,7 +656,7 @@ pub fn draw(f: &mut Frame, app: &App) {
                     spans.push(Span::styled(format!("{:>4.0}%  ", s as f64 / known_total as f64 * 100.0), dim));
                 }
                 None => {
-                    spans.push(Span::styled("░".repeat(BAR_CELLS), Style::default().fg(TRACK)));
+                    spans.push(Span::styled("░".repeat(BAR_CELLS), Style::default().fg(track())));
                     spans.push(Span::styled(format!(" {:>10} {:>5}  ", "…", ""), dim));
                 }
             }
@@ -670,10 +670,10 @@ pub fn draw(f: &mut Frame, app: &App) {
                 spans.push(Span::styled(format!("  {}", parent_display(&e.path, &app.home)), dim));
             }
             if e.partial {
-                spans.push(Span::styled("  ⚠ some folders unreadable", Style::default().fg(YELLOW)));
+                spans.push(Span::styled("  ⚠ some folders unreadable", Style::default().fg(warn())));
             }
             let item = ListItem::new(Line::from(spans));
-            if here { item.style(Style::default().bg(CURSOR_BG)) } else { item }
+            if here { item.style(Style::default().bg(cursor_bg())) } else { item }
         })
         .collect();
     let mut state = ListState::default().with_selected(if app.visible.is_empty() { None } else { Some(app.cursor) });
@@ -684,11 +684,12 @@ pub fn draw(f: &mut Frame, app: &App) {
 
     let keys = key_hints(w, app.dry_run);
     let status = if !app.message.is_empty() { app.message.clone() } else { app.note.clone() };
-    f.render_widget(Paragraph::new(vec![Line::from(Span::styled(status, Style::default().fg(YELLOW))), Line::from(Span::styled(keys, dim))]), foot);
+    f.render_widget(Paragraph::new(vec![Line::from(Span::styled(status, Style::default().fg(warn()))), Line::from(Span::styled(keys, dim))]), foot);
 
     if let Some((paths, bytes)) = &app.confirm {
         let area = centered(f.area(), 60, 7);
         f.render_widget(Clear, area);
+        fill(f, area);
         let what = if paths.len() == 1 {
             paths[0].file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default()
         } else {
@@ -698,7 +699,7 @@ pub fn draw(f: &mut Frame, app: &App) {
             Paragraph::new(vec![
                 Line::from(""),
                 Line::from(Span::styled(format!("Move {what} to the Trash?"), Style::default().add_modifier(Modifier::BOLD))),
-                Line::from(Span::styled(format!("about {}", human_bytes(*bytes)), Style::default().fg(YELLOW))),
+                Line::from(Span::styled(format!("about {}", human_bytes(*bytes)), Style::default().fg(warn()))),
                 Line::from(""),
                 Line::from(Span::styled("y  yes, move it     any other key  cancel", dim)),
             ])
@@ -706,8 +707,8 @@ pub fn draw(f: &mut Frame, app: &App) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(PURPLE))
-                    .title(Span::styled(" Confirm ", Style::default().fg(PURPLE).add_modifier(Modifier::BOLD))),
+                    .border_style(Style::default().fg(accent()))
+                    .title(Span::styled(" Confirm ", Style::default().fg(accent()).add_modifier(Modifier::BOLD))),
             ),
             area,
         );

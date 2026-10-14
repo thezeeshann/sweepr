@@ -3,11 +3,12 @@
 use super::discover::App;
 use crate::status::human_bytes;
 use anyhow::Result;
+use crate::theme::pal;
 use ratatui::{
     Frame,
     crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers},
     layout::{Constraint, Layout},
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
 };
@@ -146,6 +147,7 @@ pub fn pick(apps: &[App]) -> Result<Vec<usize>> {
 }
 
 pub fn draw(f: &mut Frame, p: &Picker) {
+    crate::theme::backdrop(f);
     let [head, list, foot] = Layout::vertical([Constraint::Length(2), Constraint::Min(3), Constraint::Length(1)]).areas(f.area());
 
     let search = if p.searching || !p.query.is_empty() {
@@ -156,10 +158,10 @@ pub fn draw(f: &mut Frame, p: &Picker) {
     f.render_widget(
         Paragraph::new(vec![
             Line::from(vec![
-                Span::styled("Uninstall apps", Style::default().add_modifier(Modifier::BOLD).fg(Color::Magenta)),
+                Span::styled("Uninstall apps", Style::default().add_modifier(Modifier::BOLD).fg(pal().title)),
                 Span::raw(format!("  {} shown · {} selected ({})", p.visible.len(), p.selected.len(), human_bytes(p.selected_bytes()))),
             ]),
-            Line::from(Span::styled(search, Style::default().fg(Color::Yellow))),
+            Line::from(Span::styled(search, Style::default().fg(pal().search))),
         ]),
         head,
     );
@@ -170,13 +172,13 @@ pub fn draw(f: &mut Frame, p: &Picker) {
         .map(|&i| {
             let a = &p.apps[i];
             let mark = if p.selected.contains(&i) { "[x]" } else { "[ ]" };
-            let style = if p.selected.contains(&i) { Style::default().fg(Color::Green) } else { Style::default() };
+            let style = if p.selected.contains(&i) { Style::default().fg(pal().select) } else { Style::default() };
             ListItem::new(Line::from(vec![
                 Span::styled(format!("{mark} "), style),
                 Span::styled(format!("{:<34}", truncate(&a.name, 34)), style),
-                Span::styled(format!("{:>10}  ", human_bytes(a.size)), Style::default().fg(Color::Cyan)),
-                Span::styled(format!("{:<12}", truncate(a.version.as_deref().unwrap_or(""), 12)), Style::default().fg(Color::DarkGray)),
-                Span::styled(a.bundle_id.clone().unwrap_or_default(), Style::default().fg(Color::DarkGray)),
+                Span::styled(format!("{:>10}  ", human_bytes(a.size)), Style::default().fg(pal().size)),
+                Span::styled(format!("{:<12}", truncate(a.version.as_deref().unwrap_or(""), 12)), Style::default().fg(pal().faint)),
+                Span::styled(a.bundle_id.clone().unwrap_or_default(), Style::default().fg(pal().faint)),
             ]))
         })
         .collect();
@@ -189,7 +191,7 @@ pub fn draw(f: &mut Frame, p: &Picker) {
     f.render_widget(
         Paragraph::new(Span::styled(
             "↑↓ move · space select · / search · c clear · enter review · q quit",
-            Style::default().fg(Color::DarkGray),
+            Style::default().fg(pal().faint),
         )),
         foot,
     );

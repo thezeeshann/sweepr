@@ -3,6 +3,7 @@ mod clean;
 mod maintain;
 mod status;
 mod theme;
+mod theme_cmd;
 mod uninstall;
 mod util;
 
@@ -15,6 +16,9 @@ struct Cli {
     /// Preview only: read and report, never delete, move, write or change anything
     #[arg(short = 'n', long, global = true)]
     dry_run: bool,
+    /// Color theme for this run (see `sw theme list`)
+    #[arg(long, global = true, value_name = "NAME")]
+    theme: Option<String>,
     #[command(subcommand)]
     command: Command,
 }
@@ -31,17 +35,20 @@ enum Command {
     Uninstall(uninstall::Args),
     /// System maintenance: flush DNS, refresh QuickLook/icons, compact databases
     Maintain(maintain::Args),
+    /// Terminal theme: check the active one, preview and save another
+    Theme(theme_cmd::Args),
 }
 
 fn main() {
     let cli = Cli::parse();
-    let result = match cli.command {
+    let result = theme::init(cli.theme.as_deref()).and_then(|choice| match cli.command {
         Command::Status(a) => status::run(a),
         Command::Clean(a) => clean::run(a, cli.dry_run),
         Command::Analyze(a) => analyze::run_cmd(a, cli.dry_run),
         Command::Uninstall(a) => uninstall::run_cmd(a, cli.dry_run),
         Command::Maintain(a) => maintain::run_cmd(a, cli.dry_run),
-    };
+        Command::Theme(a) => theme_cmd::run_cmd(a, cli.dry_run, choice),
+    });
     if let Err(e) = result {
         eprintln!("sw: {e:#}");
         std::process::exit(1);

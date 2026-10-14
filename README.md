@@ -9,6 +9,7 @@ sw clean        deep clean: caches, logs, leftovers, orphaned app data
 sw analyze      disk analyzer: where did the space go, find large files
 sw uninstall    remove an app with its preferences, caches and LaunchAgents
 sw maintain     flush DNS, refresh QuickLook/icons, compact databases
+sw theme        check, preview and change the color theme
 ```
 
 ## Screenshots
@@ -182,6 +183,29 @@ sw maintain --only quicklook      # dns | quicklook | databases
 DNS flush needs your password (run it in a terminal). Database compaction needs
 Safari/Messages closed and Full Disk Access; it checks integrity first and skips
 anything over 100 MB.
+
+### `sw theme`
+
+Five themes: `default` (the original look) and four Omarchy ports: `one-dark`,
+`one-dark-pro`, `arc-blueberry`, `atelier`. A theme applies to every command:
+the full-screen views take its background and colors, and the plain output of `clean`,
+`uninstall` and `maintain` uses its colors.
+
+```sh
+sw theme                      # interactive: move to preview live, enter saves, q cancels
+sw theme list                 # all themes with a color swatch; marks the active one
+sw theme current              # which theme is active and where that came from
+sw theme set atelier          # save it (omarchy-atelier-theme style names work too)
+sw theme reset                # back to the default
+sw --theme arc-blueberry status   # try one for a single run
+SWEEPR_THEME=atelier sw status    # or per shell
+```
+
+Priority: `--theme`, then `$SWEEPR_THEME`, then the saved choice
+(`~/.config/sweepr/theme`), then `default`. Themes use truecolor; Terminal.app has none,
+so there the colors are approximated with the 256-color palette (iTerm2, Ghostty and
+others show them exactly). This only changes how sweepr looks, not your terminal's own
+settings.
 
 ## Safety model
 

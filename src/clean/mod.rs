@@ -16,6 +16,7 @@ pub use running::Running;
 pub use safety::should_protect_path;
 
 use crate::status::human_bytes;
+use crate::theme::{Role, sgr};
 use anyhow::{Result, bail};
 use clap::Args as ClapArgs;
 use engine::{Engine, Item};
@@ -255,10 +256,10 @@ impl Ui {
     pub fn paint(&self, code: &str, s: &str) -> String {
         if self.color { format!("\x1b[{code}m{s}\x1b[0m") } else { s.to_string() }
     }
-    pub fn green(&self, s: &str) -> String { self.paint("32", s) }
-    pub fn yellow(&self, s: &str) -> String { self.paint("33", s) }
-    pub fn blue(&self, s: &str) -> String { self.paint("34", s) }
-    pub fn gray(&self, s: &str) -> String { self.paint("90", s) }
+    pub fn green(&self, s: &str) -> String { self.paint(&sgr(Role::Good), s) }
+    pub fn yellow(&self, s: &str) -> String { self.paint(&sgr(Role::Warn), s) }
+    pub fn blue(&self, s: &str) -> String { self.paint(&sgr(Role::Info), s) }
+    pub fn gray(&self, s: &str) -> String { self.paint(&sgr(Role::Dim), s) }
     pub fn bold(&self, s: &str) -> String { self.paint("1", s) }
     pub fn progress(&self, msg: &str) {
         if self.tty {
